@@ -175,6 +175,10 @@
     background:rgba(0,0,0,.2);
   }
 
+  .swatches.compact{grid-template-columns:repeat(auto-fill,minmax(94px,1fr));}
+  .swatches.compact .swatch{min-height:108px;}
+  .swatches.compact .sw-hex{font-size:12.5px;}
+
   .copyall-btn{
     width:100%;margin-top:18px;padding:13px;border-radius:12px;border:1px solid var(--accent);
     background:var(--accent-soft);color:var(--text);font-family:var(--sans);font-weight:600;
@@ -374,32 +378,84 @@
 
   /* ----------------- harmony modes ----------------- */
   const MODES=[
-    {id:'complementary',name:'Complementary',desc:'Two hues sitting directly opposite on the wheel — bold, high-contrast pairings.'},
-    {id:'analogous',name:'Analogous',desc:'Neighbouring hues that sit side by side — harmonious, calm and easy on the eye.'},
-    {id:'triadic',name:'Triadic',desc:'Three hues spaced evenly around the wheel — vibrant yet balanced.'},
-    {id:'tetradic',name:'Tetradic',desc:'Four hues forming two complementary pairs — rich and versatile.'},
-    {id:'split',name:'Split-comp',desc:'A base plus the two hues flanking its complement — strong contrast with less tension.'},
-    {id:'mono',name:'Monochrome',desc:'A single hue across tints and shades — clean and effortlessly cohesive.'}
+    {id:'complementary',name:'Complementary',desc:'Base + complement, each with a tint and shade — bold, high-contrast pairings in full depth. (6 colours)'},
+    {id:'analogous',name:'Analogous',desc:'Nine hues spanning 120° of the wheel — harmonious, calm, and effortlessly cohesive.'},
+    {id:'triadic',name:'Triadic',desc:'Three evenly-spaced hues, each with a shade and tint — vibrant yet balanced. (9 colours)'},
+    {id:'tetradic',name:'Tetradic',desc:'Four hues forming two complementary pairs, each with a tint — rich and versatile. (8 colours)'},
+    {id:'split',name:'Split-comp',desc:'A base plus two hues flanking its complement, each with a tint — contrast with nuance. (6 colours)'},
+    {id:'rectangle',name:'Rectangle',desc:'Four hues in two offset complementary pairs, each with a shade — dramatic and complex. (8 colours)'},
+    {id:'compound',name:'Compound',desc:'Analogous cluster + complement cluster + neutral — editorial, sophisticated, and full-range. (7 colours)'},
+    {id:'shades',name:'Shades',desc:'Nine progressively darker tones of your hue — ideal for depth, shadow, and dark-mode UIs.'},
+    {id:'tints',name:'Tints',desc:'Nine progressively lighter tones blending toward white — ideal for backgrounds and highlights.'},
+    {id:'muted',name:'Muted Tones',desc:'Desaturated analogous hues — earthy, sophisticated, and easy to pair with anything. (7 colours)'},
+    {id:'pastel',name:'Pastel',desc:'Soft, high-lightness hues spread evenly across the wheel — gentle, airy, and welcoming. (7 colours)'},
   ];
 
   function genPalette(){
-    const base={h:H,s:S,v:V,base:true};
-    const rot=d=>({h:((H+d)%360+360)%360,s:S,v:V,base:false});
     const cl=x=>Math.max(0,Math.min(1,x));
     const mix=(a,b,t)=>a+(b-a)*t;
+    const base={h:H,s:S,v:V,base:true};
+    const rot=d=>({h:((H+d)%360+360)%360,s:S,v:V,base:false});
+    const hrot=d=>((H+d)%360+360)%360;
+    const mk=(h,s,v,isBase=false)=>({h:((h)%360+360)%360,s:cl(s),v:cl(v),base:isBase});
     switch(MODE){
-      case 'complementary': return [base, rot(180)];
-      case 'analogous':     return [rot(-40),rot(-20),base,rot(20),rot(40)];
-      case 'triadic':       return [base,rot(120),rot(240)];
-      case 'tetradic':      return [base,rot(90),rot(180),rot(270)];
-      case 'split':         return [base,rot(150),rot(210)];
-      case 'mono':          return [
-        {h:H,s:cl(S+0.08),v:cl(V*0.42),base:false},
-        {h:H,s:cl(S+0.02),v:cl(V*0.70),base:false},
-        {h:H,s:S,v:V,base:true},
-        {h:H,s:cl(S*0.62),v:cl(mix(V,1,0.42)),base:false},
-        {h:H,s:cl(S*0.38),v:cl(mix(V,1,0.72)),base:false}
-      ];
+      case 'complementary':{
+        const c=hrot(180);
+        return [
+          mk(H, S+0.05, V*0.52),            // base — deep shade
+          base,                               // base
+          mk(H, S*0.5, mix(V,1,0.52)),       // base — tint
+          mk(c, S+0.05, V*0.52),             // complement — deep shade
+          mk(c, S, V),                        // complement
+          mk(c, S*0.5, mix(V,1,0.52)),       // complement — tint
+        ];
+      }
+      case 'analogous':
+        return [-60,-45,-30,-15,0,15,30,45,60].map(d=>({h:hrot(d),s:S,v:V,base:d===0}));
+      case 'triadic':
+        return [0,120,240].flatMap(d=>[
+          mk(H+d, S+0.05, V*0.55),
+          {h:hrot(d),s:S,v:V,base:d===0},
+          mk(H+d, S*0.45, mix(V,1,0.52)),
+        ]);
+      case 'tetradic':
+        return [0,90,180,270].flatMap(d=>[
+          {h:hrot(d),s:S,v:V,base:d===0},
+          mk(H+d, S*0.5, mix(V,1,0.5)),
+        ]);
+      case 'split':
+        return [0,150,210].flatMap(d=>[
+          {h:hrot(d),s:S,v:V,base:d===0},
+          mk(H+d, S*0.48, mix(V,1,0.54)),
+        ]);
+      case 'rectangle':
+        return [0,60,180,240].flatMap(d=>[
+          {h:hrot(d),s:S,v:V,base:d===0},
+          mk(H+d, S*0.55, V*0.62),
+        ]);
+      case 'compound':
+        return [
+          base,
+          rot(22), rot(-22),
+          mk(H+180, S, V),
+          mk(H+205, S*0.78, V),
+          mk(H+155, S*0.78, V),
+          mk(H, S*0.16, V*0.86),
+        ];
+      case 'shades':
+        return Array.from({length:9},(_,i)=>{
+          const t=i/8;
+          return mk(H, S+0.06*t, V*(1-t*0.9), i===0);
+        });
+      case 'tints':
+        return Array.from({length:9},(_,i)=>{
+          const t=i/8;
+          return {h:H,s:cl(S*(1-t*0.94)),v:cl(V+(1-V)*t*0.96),base:i===0};
+        });
+      case 'muted':
+        return [-60,-40,-20,0,20,40,60].map(d=>({h:hrot(d),s:cl(S*0.36),v:cl(V*0.92),base:d===0}));
+      case 'pastel':
+        return [0,52,104,156,208,260,312].map(d=>({h:hrot(d),s:cl(0.2+S*0.1),v:cl(0.94+V*0.04),base:d===0}));
       default: return [base];
     }
   }
@@ -407,6 +463,7 @@
   function buildSwatches(){
     const pal=genPalette();
     swatchesEl.innerHTML='';
+    swatchesEl.className='swatches'+(pal.length>=7?' compact':'');
     nodes=[];
     pal.forEach((c,i)=>{
       const b=document.createElement('button');
@@ -422,6 +479,7 @@
   function paintSwatches(){
     const pal=genPalette();
     if(nodes.length!==pal.length) buildSwatches();
+    swatchesEl.className='swatches'+(pal.length>=7?' compact':'');
     pal.forEach((c,i)=>{
       const node=nodes[i]; if(!node) return;
       const rgb=hsv2rgb(c.h,c.s,c.v);
