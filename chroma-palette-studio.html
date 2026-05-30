@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chroma — Palette Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,500&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#141318;
+    --panel:#1f1d27;
+    --panel-2:#27242f;
+    --line:rgba(255,255,255,.08);
+    --line-strong:rgba(255,255,255,.15);
+    --text:#ece9f1;
+    --muted:#9b96a8;
+    --muted-2:#6b6678;
+    --accent:#56b6c2;
+    --accent-soft:rgba(86,182,194,.22);
+    --accent-glow:rgba(86,182,194,.5);
+    --accent-ink:#15131a;
+    --radius:18px;
+    --mono:'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans:'Hanken Grotesk', 'Segoe UI', system-ui, sans-serif;
+    --display:'Fraunces', Georgia, 'Times New Roman', serif;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{
+    min-height:100vh;
+    font-family:var(--sans);
+    color:var(--text);
+    padding:34px 22px 56px;
+    -webkit-font-smoothing:antialiased;
+    background:
+      radial-gradient(1100px 560px at 12% -12%, #25212f, transparent 58%),
+      radial-gradient(900px 520px at 102% -4%, #182430, transparent 55%),
+      var(--bg);
+  }
+  body::before{
+    content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.045;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .app{position:relative;z-index:1;max-width:1000px;margin:0 auto;}
+
+  /* ---------- header ---------- */
+  header{margin-bottom:28px;}
+  .brand{display:flex;align-items:center;gap:13px;}
+  .brand .dot{
+    width:15px;height:15px;border-radius:50%;flex:none;
+    background:conic-gradient(from 0deg,#ff5a5a,#ffcf4d,#5dff8f,#4dd6ff,#a96bff,#ff5a5a);
+    box-shadow:0 0 20px var(--accent-glow);
+  }
+  h1{
+    font-family:var(--display);font-style:italic;font-weight:500;
+    font-size:clamp(36px,6.5vw,54px);line-height:1;letter-spacing:-.012em;margin:0;
+  }
+  .tag{font-family:var(--sans);color:var(--muted);font-size:15px;margin:11px 0 0;max-width:52ch;line-height:1.5;}
+
+  /* ---------- layout ---------- */
+  .grid{display:grid;grid-template-columns:minmax(300px,358px) 1fr;gap:22px;align-items:start;}
+  @media(max-width:790px){.grid{grid-template-columns:1fr;}}
+
+  .panel{
+    background:linear-gradient(180deg,var(--panel),var(--panel-2));
+    border:1px solid var(--line);border-radius:var(--radius);padding:24px;
+    box-shadow:0 22px 54px rgba(0,0,0,.4);
+  }
+  .eyebrow-row{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:18px;}
+  .eyebrow{
+    font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--muted-2);
+  }
+  .count{font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:500;}
+
+  /* ---------- wheel ---------- */
+  .wheel-wrap{position:relative;width:300px;height:300px;margin:0 auto;}
+  .wheel-wrap::before{
+    content:'';position:absolute;inset:-30px;border-radius:50%;z-index:0;
+    background:radial-gradient(circle at center,var(--accent-glow),transparent 66%);
+    filter:blur(10px);opacity:.5;transition:background .25s ease;
+  }
+  #wheel{
+    position:relative;z-index:1;border-radius:50%;display:block;cursor:crosshair;
+    touch-action:none;
+    box-shadow:0 10px 34px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.07);
+  }
+  .marker{
+    position:absolute;z-index:2;top:0;left:0;width:26px;height:26px;border-radius:50%;
+    border:3px solid #fff;pointer-events:none;
+    transform:translate(-50%,-50%);
+    transition:transform .12s ease, box-shadow .2s ease;
+    box-shadow:0 0 0 1px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.55), 0 0 22px var(--accent-glow);
+  }
+  .marker.drag{transform:translate(-50%,-50%) scale(1.18);}
+
+  /* ---------- brightness ---------- */
+  .value-row{margin:24px 0 20px;}
+  .value-row label{
+    display:block;font-family:var(--sans);font-size:12px;font-weight:600;
+    letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:11px;
+  }
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:100%;height:14px;border-radius:999px;
+    outline:none;cursor:pointer;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.13), inset 0 2px 6px rgba(0,0,0,.45);
+  }
+  input[type=range]::-webkit-slider-runnable-track{height:14px;border-radius:999px;background:transparent;}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;width:24px;height:24px;margin-top:-5px;border-radius:50%;
+    background:#fff;border:3px solid var(--accent);box-shadow:0 2px 9px rgba(0,0,0,.55);cursor:grab;
+    transition:border-color .2s ease;
+  }
+  input[type=range]::-moz-range-track{height:14px;border-radius:999px;background:transparent;}
+  input[type=range]::-moz-range-thumb{
+    width:24px;height:24px;border-radius:50%;background:#fff;border:3px solid var(--accent);
+    box-shadow:0 2px 9px rgba(0,0,0,.55);cursor:grab;
+  }
+
+  /* ---------- readout ---------- */
+  .hex-input{
+    font-family:var(--mono);font-size:30px;font-weight:600;letter-spacing:.04em;
+    color:var(--text);background:transparent;border:none;border-bottom:2px solid var(--line);
+    width:100%;padding:6px 2px;text-transform:uppercase;outline:none;transition:border-color .2s ease;
+  }
+  .hex-input:focus{border-color:var(--accent);}
+  .codes{display:flex;gap:16px;flex-wrap:wrap;margin:13px 0 18px;font-family:var(--mono);font-size:12.5px;color:var(--muted);}
+  .ghost-btn{
+    border:1px solid var(--line-strong);background:transparent;color:var(--text);
+    border-radius:999px;padding:9px 17px;font-family:var(--sans);font-weight:600;font-size:13px;
+    cursor:pointer;transition:all .18s ease;display:inline-flex;align-items:center;gap:7px;
+  }
+  .ghost-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+  /* ---------- harmony modes ---------- */
+  .modes{display:flex;flex-wrap:wrap;gap:8px;}
+  .mode-btn{
+    font-family:var(--sans);font-size:13px;font-weight:600;color:var(--muted);
+    background:var(--panel-2);border:1px solid var(--line);padding:8px 15px;border-radius:999px;
+    cursor:pointer;transition:all .18s ease;
+  }
+  .mode-btn:hover{color:var(--text);border-color:var(--line-strong);}
+  .mode-btn.active{
+    color:var(--accent-ink);background:var(--accent);border-color:var(--accent);
+    box-shadow:0 5px 18px var(--accent-soft);
+  }
+  .mode-desc{
+    font-family:var(--sans);font-size:13.5px;color:var(--muted);
+    margin:16px 0 18px;min-height:34px;line-height:1.5;
+  }
+
+  /* ---------- swatches ---------- */
+  .swatches{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:13px;}
+  .swatch{
+    position:relative;aspect-ratio:3/4;min-height:142px;border:none;border-radius:14px;
+    cursor:pointer;overflow:hidden;display:flex;align-items:flex-end;padding:13px;text-align:left;
+    font-family:inherit;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.13), 0 9px 24px rgba(0,0,0,.38);
+    transition:transform .18s ease, box-shadow .18s ease;
+    animation:rise .55s cubic-bezier(.2,.7,.2,1) both;
+  }
+  .swatch:hover{transform:translateY(-5px);box-shadow:inset 0 0 0 1px rgba(0,0,0,.13),0 18px 34px rgba(0,0,0,.5);}
+  .swatch:active{transform:translateY(-1px) scale(.985);}
+  .sw-hex{font-family:var(--mono);font-weight:600;font-size:15px;letter-spacing:.02em;}
+  .sw-copy{position:absolute;top:11px;right:11px;opacity:0;transition:opacity .18s ease;display:flex;}
+  .swatch:hover .sw-copy{opacity:.85;}
+  .swatch.copied .sw-copy{opacity:.95;}
+  .sw-base{
+    position:absolute;top:11px;left:11px;font-family:var(--sans);font-size:9.5px;font-weight:700;
+    letter-spacing:.13em;text-transform:uppercase;padding:3px 8px;border-radius:999px;
+    background:rgba(0,0,0,.2);
+  }
+
+  .copyall-btn{
+    width:100%;margin-top:18px;padding:13px;border-radius:12px;border:1px solid var(--accent);
+    background:var(--accent-soft);color:var(--text);font-family:var(--sans);font-weight:600;
+    font-size:14px;cursor:pointer;transition:all .18s ease;
+  }
+  .copyall-btn:hover{background:var(--accent);color:var(--accent-ink);}
+
+  .foot{
+    margin-top:26px;font-family:var(--sans);font-size:12.5px;color:var(--muted-2);
+    display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+  }
+  .foot b{color:var(--muted);font-weight:600;}
+
+  @keyframes rise{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+</style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <span class="dot"></span>
+        <h1>Chroma</h1>
+      </div>
+      <p class="tag">Spin the wheel, set the brightness, and pull a complete, copy-ready palette of hex codes from any harmony rule.</p>
+    </header>
+
+    <div class="grid">
+      <!-- PICKER -->
+      <section class="panel">
+        <div class="eyebrow-row"><span class="eyebrow">Pick a colour</span></div>
+
+        <div class="wheel-wrap">
+          <canvas id="wheel" aria-label="Colour wheel — drag to choose hue and saturation"></canvas>
+          <div id="marker" class="marker"></div>
+        </div>
+
+        <div class="value-row">
+          <label for="value">Brightness</label>
+          <input type="range" id="value" min="0" max="100" value="92" aria-label="Brightness">
+        </div>
+
+        <input id="hexInput" class="hex-input" value="#000000" spellcheck="false" aria-label="Hex value — type or paste a colour">
+        <div class="codes">
+          <span id="rgbOut">rgb(0, 0, 0)</span>
+          <span id="hslOut">hsl(0, 0%, 0%)</span>
+        </div>
+        <button id="randomBtn" class="ghost-btn">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+          Surprise me
+        </button>
+      </section>
+
+      <!-- PALETTE -->
+      <section class="panel">
+        <div class="eyebrow-row">
+          <span class="eyebrow">Your palette</span>
+          <span class="count" id="count">5 colours</span>
+        </div>
+        <div class="modes" id="modes"></div>
+        <p class="mode-desc" id="modeDesc"></p>
+        <div class="swatches" id="swatches"></div>
+        <button class="copyall-btn" id="copyAll" data-label="Copy all hex codes">Copy all hex codes</button>
+        <div class="foot">
+          <b>Tip</b><span>·</span><span>Click any swatch to copy its hex · paste a hex above to jump there · drag the wheel to explore.</span>
+        </div>
+      </section>
+    </div>
+  </div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ----------------- colour math ----------------- */
+  function hsv2rgb(h,s,v){
+    h=((h%360)+360)%360; s=Math.max(0,Math.min(1,s)); v=Math.max(0,Math.min(1,v));
+    const c=v*s, hp=h/60, x=c*(1-Math.abs(hp%2-1)), m=v-c;
+    let r,g,b;
+    const seg=Math.floor(hp);
+    if(seg===0){r=c;g=x;b=0;} else if(seg===1){r=x;g=c;b=0;}
+    else if(seg===2){r=0;g=c;b=x;} else if(seg===3){r=0;g=x;b=c;}
+    else if(seg===4){r=x;g=0;b=c;} else {r=c;g=0;b=x;}
+    return [Math.round((r+m)*255),Math.round((g+m)*255),Math.round((b+m)*255)];
+  }
+  function rgb2hsv(r,g,b){
+    r/=255;g/=255;b/=255;
+    const max=Math.max(r,g,b),min=Math.min(r,g,b),d=max-min;
+    let h=0;
+    if(d!==0){
+      if(max===r)h=((g-b)/d)%6;
+      else if(max===g)h=(b-r)/d+2;
+      else h=(r-g)/d+4;
+      h*=60; if(h<0)h+=360;
+    }
+    return [h, max===0?0:d/max, max];
+  }
+  function rgb2hsl(r,g,b){
+    r/=255;g/=255;b/=255;
+    const max=Math.max(r,g,b),min=Math.min(r,g,b),l=(max+min)/2,d=max-min;
+    let h=0,s=0;
+    if(d!==0){
+      s=l>0.5?d/(2-max-min):d/(max+min);
+      if(max===r)h=((g-b)/d)%6;
+      else if(max===g)h=(b-r)/d+2;
+      else h=(r-g)/d+4;
+      h*=60; if(h<0)h+=360;
+    }
+    return [h, s*100, l*100];
+  }
+  const hx=n=>n.toString(16).padStart(2,'0');
+  function rgb2hex(r,g,b){return '#'+hx(r)+hx(g)+hx(b);}
+  function parseHex(str){
+    let s=String(str).trim().replace(/^#/,'');
+    if(/^[0-9a-fA-F]{3}$/.test(s)) s=s.split('').map(c=>c+c).join('');
+    if(/^[0-9a-fA-F]{6}$/.test(s)) return [parseInt(s.slice(0,2),16),parseInt(s.slice(2,4),16),parseInt(s.slice(4,6),16)];
+    return null;
+  }
+  function luminance(r,g,b){
+    const a=[r,g,b].map(v=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4);});
+    return 0.2126*a[0]+0.7152*a[1]+0.0722*a[2];
+  }
+
+  /* ----------------- state ----------------- */
+  let H=200, S=0.78, V=0.92;
+  let MODE='analogous';
+  let dragging=false;
+  let nodes=[];
+
+  const root=document.documentElement;
+  const canvas=document.getElementById('wheel');
+  const ctx=canvas.getContext('2d',{willReadFrequently:false});
+  const marker=document.getElementById('marker');
+  const valueEl=document.getElementById('value');
+  const hexInput=document.getElementById('hexInput');
+  const rgbOut=document.getElementById('rgbOut');
+  const hslOut=document.getElementById('hslOut');
+  const randomBtn=document.getElementById('randomBtn');
+  const modesEl=document.getElementById('modes');
+  const modeDescEl=document.getElementById('modeDesc');
+  const swatchesEl=document.getElementById('swatches');
+  const copyAllBtn=document.getElementById('copyAll');
+  const countEl=document.getElementById('count');
+
+  const copyIcon='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+
+  /* ----------------- wheel rendering ----------------- */
+  const SIZE=300;
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  const RES=Math.round(SIZE*dpr);
+  canvas.width=RES; canvas.height=RES;
+  canvas.style.width=SIZE+'px'; canvas.style.height=SIZE+'px';
+  const cx=RES/2, cy=RES/2, radius=RES/2;
+
+  const hues=new Float32Array(RES*RES);
+  const sats=new Float32Array(RES*RES);
+  const alpha=new Float32Array(RES*RES);
+  let img=null;
+
+  function precompute(){
+    for(let y=0;y<RES;y++){
+      for(let x=0;x<RES;x++){
+        const i=y*RES+x;
+        const dx=x-cx+0.5, dy=y-cy+0.5;
+        const dist=Math.sqrt(dx*dx+dy*dy);
+        const a=Math.max(0,Math.min(1, radius-dist+0.5));
+        alpha[i]=a;
+        if(a>0){
+          let ang=Math.atan2(dy,dx)*180/Math.PI; if(ang<0)ang+=360;
+          hues[i]=ang;
+          sats[i]=Math.min(1,dist/radius);
+        }
+      }
+    }
+  }
+  function renderWheel(){
+    if(!img) img=ctx.createImageData(RES,RES);
+    const d=img.data;
+    const v=V;
+    for(let i=0;i<alpha.length;i++){
+      const a=alpha[i], o=i*4;
+      if(a<=0){ d[o+3]=0; continue; }
+      const h=hues[i], s=sats[i];
+      const c=v*s, hp=h/60, x=c*(1-Math.abs(hp%2-1)), m=v-c;
+      let r,g,b;
+      const seg=hp|0;
+      if(seg===0){r=c;g=x;b=0;} else if(seg===1){r=x;g=c;b=0;}
+      else if(seg===2){r=0;g=c;b=x;} else if(seg===3){r=0;g=x;b=c;}
+      else if(seg===4){r=x;g=0;b=c;} else {r=c;g=0;b=x;}
+      d[o]  =((r+m)*255+0.5)|0;
+      d[o+1]=((g+m)*255+0.5)|0;
+      d[o+2]=((b+m)*255+0.5)|0;
+      d[o+3]=(a*255+0.5)|0;
+    }
+    ctx.clearRect(0,0,RES,RES);
+    ctx.putImageData(img,0,0);
+  }
+
+  /* ----------------- harmony modes ----------------- */
+  const MODES=[
+    {id:'complementary',name:'Complementary',desc:'Two hues sitting directly opposite on the wheel — bold, high-contrast pairings.'},
+    {id:'analogous',name:'Analogous',desc:'Neighbouring hues that sit side by side — harmonious, calm and easy on the eye.'},
+    {id:'triadic',name:'Triadic',desc:'Three hues spaced evenly around the wheel — vibrant yet balanced.'},
+    {id:'tetradic',name:'Tetradic',desc:'Four hues forming two complementary pairs — rich and versatile.'},
+    {id:'split',name:'Split-comp',desc:'A base plus the two hues flanking its complement — strong contrast with less tension.'},
+    {id:'mono',name:'Monochrome',desc:'A single hue across tints and shades — clean and effortlessly cohesive.'}
+  ];
+
+  function genPalette(){
+    const base={h:H,s:S,v:V,base:true};
+    const rot=d=>({h:((H+d)%360+360)%360,s:S,v:V,base:false});
+    const cl=x=>Math.max(0,Math.min(1,x));
+    const mix=(a,b,t)=>a+(b-a)*t;
+    switch(MODE){
+      case 'complementary': return [base, rot(180)];
+      case 'analogous':     return [rot(-40),rot(-20),base,rot(20),rot(40)];
+      case 'triadic':       return [base,rot(120),rot(240)];
+      case 'tetradic':      return [base,rot(90),rot(180),rot(270)];
+      case 'split':         return [base,rot(150),rot(210)];
+      case 'mono':          return [
+        {h:H,s:cl(S+0.08),v:cl(V*0.42),base:false},
+        {h:H,s:cl(S+0.02),v:cl(V*0.70),base:false},
+        {h:H,s:S,v:V,base:true},
+        {h:H,s:cl(S*0.62),v:cl(mix(V,1,0.42)),base:false},
+        {h:H,s:cl(S*0.38),v:cl(mix(V,1,0.72)),base:false}
+      ];
+      default: return [base];
+    }
+  }
+
+  function buildSwatches(){
+    const pal=genPalette();
+    swatchesEl.innerHTML='';
+    nodes=[];
+    pal.forEach((c,i)=>{
+      const b=document.createElement('button');
+      b.className='swatch';
+      b.style.animationDelay=(i*55)+'ms';
+      b.innerHTML='<span class="sw-base">base</span><span class="sw-copy">'+copyIcon+'</span><span class="sw-hex">#000000</span>';
+      b.addEventListener('click',()=>onSwatchClick(b));
+      swatchesEl.appendChild(b);
+      nodes.push(b);
+    });
+  }
+
+  function paintSwatches(){
+    const pal=genPalette();
+    if(nodes.length!==pal.length) buildSwatches();
+    pal.forEach((c,i)=>{
+      const node=nodes[i]; if(!node) return;
+      const rgb=hsv2rgb(c.h,c.s,c.v);
+      const hex=rgb2hex(rgb[0],rgb[1],rgb[2]).toUpperCase();
+      node.style.background=hex;
+      node.style.color=luminance(rgb[0],rgb[1],rgb[2])>0.5?'#15131a':'#ffffff';
+      node.dataset.hex=hex;
+      node.querySelector('.sw-hex').textContent=hex;
+      node.querySelector('.sw-base').style.display=c.base?'inline-flex':'none';
+    });
+    countEl.textContent=pal.length+(pal.length===1?' colour':' colours');
+  }
+
+  /* ----------------- clipboard ----------------- */
+  async function doCopy(text){
+    try{ await navigator.clipboard.writeText(text); return true; }
+    catch(e){
+      try{
+        const ta=document.createElement('textarea');
+        ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
+        document.body.appendChild(ta); ta.select();
+        const ok=document.execCommand('copy');
+        document.body.removeChild(ta); return ok;
+      }catch(e2){ return false; }
+    }
+  }
+  async function onSwatchClick(b){
+    const hex=b.dataset.hex; if(!hex) return;
+    const ok=await doCopy(hex);
+    const span=b.querySelector('.sw-hex');
+    const orig=hex.toUpperCase();
+    if(b._t) clearTimeout(b._t);
+    span.textContent=ok?'COPIED':'PRESS ⌘C';
+    b.classList.add('copied');
+    b._t=setTimeout(()=>{ span.textContent=orig; b.classList.remove('copied'); },1100);
+  }
+
+  /* ----------------- ui refresh ----------------- */
+  function updateValueTrack(){
+    const c0=hsv2rgb(H,S,0), c1=hsv2rgb(H,S,1);
+    valueEl.style.background='linear-gradient(90deg, '+rgb2hex(c0[0],c0[1],c0[2])+' 0%, '+rgb2hex(c1[0],c1[1],c1[2])+' 100%)';
+  }
+  function setAccent(){
+    const aS=Math.max(S,0.5), aV=Math.max(V,0.6);
+    const c=hsv2rgb(H,aS,aV);
+    root.style.setProperty('--accent','rgb('+c[0]+', '+c[1]+', '+c[2]+')');
+    root.style.setProperty('--accent-soft','rgba('+c[0]+', '+c[1]+', '+c[2]+', .22)');
+    root.style.setProperty('--accent-glow','rgba('+c[0]+', '+c[1]+', '+c[2]+', .5)');
+    root.style.setProperty('--accent-ink', luminance(c[0],c[1],c[2])>0.55?'#15131a':'#ffffff');
+  }
+  function refresh(){
+    const rgb=hsv2rgb(H,S,V);
+    const hex=rgb2hex(rgb[0],rgb[1],rgb[2]);
+    const half=SIZE/2, ang=H*Math.PI/180;
+    marker.style.left=(half+Math.cos(ang)*S*half)+'px';
+    marker.style.top =(half+Math.sin(ang)*S*half)+'px';
+    marker.style.background=hex;
+    if(document.activeElement!==hexInput) hexInput.value=hex.toUpperCase();
+    valueEl.value=Math.round(V*100);
+    updateValueTrack();
+    rgbOut.textContent='rgb('+rgb[0]+', '+rgb[1]+', '+rgb[2]+')';
+    const hsl=rgb2hsl(rgb[0],rgb[1],rgb[2]);
+    hslOut.textContent='hsl('+Math.round(hsl[0])+', '+Math.round(hsl[1])+'%, '+Math.round(hsl[2])+'%)';
+    setAccent();
+    paintSwatches();
+  }
+
+  function selectMode(id){
+    MODE=id;
+    const m=MODES.find(x=>x.id===id);
+    modeDescEl.textContent=m?m.desc:'';
+    [...modesEl.children].forEach(btn=>btn.classList.toggle('active',btn.dataset.id===id));
+    buildSwatches();
+    refresh();
+  }
+
+  /* ----------------- interaction ----------------- */
+  function pick(e){
+    const rect=canvas.getBoundingClientRect();
+    const half=SIZE/2;
+    let dx=(e.clientX-rect.left)-half, dy=(e.clientY-rect.top)-half;
+    let dist=Math.hypot(dx,dy);
+    if(dist>half){ dx=dx/dist*half; dy=dy/dist*half; dist=half; }
+    let ang=Math.atan2(dy,dx)*180/Math.PI; if(ang<0)ang+=360;
+    H=ang; S=dist/half;
+    refresh();
+  }
+  canvas.addEventListener('pointerdown',e=>{
+    dragging=true; marker.classList.add('drag');
+    if(canvas.setPointerCapture){ try{canvas.setPointerCapture(e.pointerId);}catch(_){} }
+    pick(e); e.preventDefault();
+  });
+  window.addEventListener('pointermove',e=>{ if(dragging) pick(e); });
+  window.addEventListener('pointerup',()=>{ dragging=false; marker.classList.remove('drag'); });
+
+  valueEl.addEventListener('input',()=>{ V=valueEl.value/100; renderWheel(); refresh(); });
+
+  hexInput.addEventListener('input',()=>{
+    const rgb=parseHex(hexInput.value);
+    if(rgb){ const hsv=rgb2hsv(rgb[0],rgb[1],rgb[2]); H=hsv[0]; S=hsv[1]; V=hsv[2]; renderWheel(); refresh(); }
+  });
+  hexInput.addEventListener('blur',()=>{
+    const rgb=parseHex(hexInput.value)||hsv2rgb(H,S,V);
+    hexInput.value=rgb2hex(rgb[0],rgb[1],rgb[2]).toUpperCase();
+  });
+  hexInput.addEventListener('keydown',e=>{ if(e.key==='Enter') hexInput.blur(); });
+
+  randomBtn.addEventListener('click',()=>{
+    H=Math.random()*360; S=0.45+Math.random()*0.5; V=0.55+Math.random()*0.4;
+    renderWheel(); refresh();
+  });
+
+  copyAllBtn.addEventListener('click',async()=>{
+    const pal=genPalette();
+    const list=pal.map(c=>{const r=hsv2rgb(c.h,c.s,c.v);return rgb2hex(r[0],r[1],r[2]).toUpperCase();}).join('\n');
+    const ok=await doCopy(list);
+    const orig=copyAllBtn.dataset.label;
+    if(copyAllBtn._t) clearTimeout(copyAllBtn._t);
+    copyAllBtn.textContent=ok?('Copied '+pal.length+' hex codes ✓'):'Press ⌘C to copy';
+    copyAllBtn._t=setTimeout(()=>{ copyAllBtn.textContent=orig; },1400);
+  });
+
+  /* ----------------- init ----------------- */
+  MODES.forEach(m=>{
+    const b=document.createElement('button');
+    b.className='mode-btn'; b.textContent=m.name; b.dataset.id=m.id;
+    b.addEventListener('click',()=>selectMode(m.id));
+    modesEl.appendChild(b);
+  });
+
+  precompute();
+  renderWheel();
+  selectMode(MODE);
+})();
+</script>
+</body>
+</html>
